@@ -126,7 +126,7 @@ const ExcelReader = () => {
                 if (useData) {
                     previousIndex = groupStart;
                     previousIndexData = { ...groupData };
-                    entry.enemylist.push({ [name]: groupData });
+                    entry.enemylist.push({ [name]: groupData });  // Add the enemy as a separate entry (e.g., "normal", "normal1")
                 }
             });
 
@@ -134,13 +134,13 @@ const ExcelReader = () => {
         })
     };
 
-    // Create a Blob from the JSON data and trigger the download
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'output.json';
     link.click();
 };
+
 
 
   return (
