@@ -81,8 +81,16 @@ const ExcelReader = () => {
   };
 
   const generateJson = () => {
+
+    let newSheetData = sheetData.filter(item => {
+      const wave = item[0];
+      if (!wave || wave === "-" || wave === "") {
+          return false;
+      }
+      return true;
+    })
     const jsonData = {
-        waves: sheetData.map((row) => {
+        waves: newSheetData.map((row) => {
             const entry = {
                 wave: row[0],
                 'start time': row[1],
