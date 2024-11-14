@@ -81,63 +81,67 @@ const ExcelReader = () => {
   };
 
   const generateJson = () => {
-    const jsonData = sheetData.map((row) => {
-      const entry = {
-        wave: row[0],
-        'start time': row[1],
-        'end time': row[2],
-        'total wave': row[3],
-        'total enemy': row[4],
-        enemylist: []
-      };
+    const jsonData = {
+        waves: sheetData.map((row) => {
+            const entry = {
+                wave: row[0],
+                'start time': row[1],
+                'end time': row[2],
+                'total wave': row[3],
+                'total enemy': row[4],
+                enemylist: []
+            };
 
-      let previousIndex =  -1;
-      let previousIndexData = [];
+            let previousIndex = -1;
+            let previousIndexData = [];
 
-      let exludedValue = ["-",""];
-      let useData = true;
+            let exludedValue = ["-", ""];
+            let useData = true;
 
-      columnNames.forEach((name, groupIndex) => {
-        const groupStart = 5 + groupIndex * 6;
-        const groupData = {};
+            columnNames.forEach((name, groupIndex) => {
+                const groupStart = 5 + groupIndex * 6;
+                const groupData = {};
 
-        for (let i = 0; i < 6; i++) {
-          const columnIndex = groupStart + i;
-          groupData[i] = row[columnIndex];
+                for (let i = 0; i < 6; i++) {
+                    const columnIndex = groupStart + i;
+                    groupData[i] = row[columnIndex];
 
-          if(exludedValue.includes(row[columnIndex])){
-            if(i == 0){
-              useData = false;
-            }
-            groupData[i] = 0;
-            if(useData){
-              if(previousIndex != -1){
-                groupData[i] = previousIndexData[i];
-              }
-            }
-          }
-          else{
-            if(i == 0){
-              useData = true;
-            }
-          }
-        }
-        if(useData){
-          previousIndex = groupStart;
-          previousIndexData ={...groupData};
-          entry.enemylist.push({ [name]: groupData });
-        }
-      });
+                    if (exludedValue.includes(row[columnIndex])) {
+                        if (i == 0) {
+                            useData = false;
+                        }
+                        groupData[i] = 0;
+                        if (useData) {
+                            if (previousIndex != -1) {
+                                groupData[i] = previousIndexData[i];
+                            }
+                        }
+                    } else {
+                        if (i == 0) {
+                            useData = true;
+                        }
+                    }
+                }
 
-      return entry;
-    });
+                if (useData) {
+                    previousIndex = groupStart;
+                    previousIndexData = { ...groupData };
+                    entry.enemylist.push({ [name]: groupData });
+                }
+            });
 
+            return entry;
+        })
+    };
+
+    // Create a Blob from the JSON data and trigger the download
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'output.json';
     link.click();
-  };
+};
+
 
   return (
     <div style={styles.container}>
