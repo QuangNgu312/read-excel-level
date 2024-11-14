@@ -92,10 +92,10 @@ const ExcelReader = () => {
         waves: newSheetData.map((row) => {
             const entry = {
                 wave: row[0],
-                'start time': row[1],
-                'end time': row[2],
-                'total wave': row[3],
-                'total enemy': row[4],
+                'startTime': row[1],
+                'endTime': row[2],
+                'totalWave': row[3],
+                'totalEnemy': row[4],
                 enemylist: []  // Initialize the enemylist
             };
 
