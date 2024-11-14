@@ -81,14 +81,13 @@ const ExcelReader = () => {
   };
 
   const generateJson = () => {
-
+    // Filter the rows to exclude invalid waves
     let newSheetData = sheetData.filter(item => {
-      const wave = item[0];
-      if (!wave || wave === "-" || wave === "") {
-          return false;
-      }
-      return true;
-    })
+        const wave = item[0];
+        // Skip rows where the wave value is invalid (null, "-", or "")
+        return wave && wave !== "-" && wave !== "";
+    });
+
     const jsonData = {
         waves: newSheetData.map((row) => {
             const entry = {
@@ -97,32 +96,32 @@ const ExcelReader = () => {
                 'end time': row[2],
                 'total wave': row[3],
                 'total enemy': row[4],
-                enemylist: []
+                enemylist: []  // Initialize the enemylist
             };
 
             let previousIndex = -1;
             let previousIndexData = [];
 
-            let exludedValue = ["-", ""];
+            let excludedValue = ["-", ""];
             let useData = true;
 
             columnNames.forEach((name, groupIndex) => {
                 const groupStart = 5 + groupIndex * 6;
-                const groupData = {};
+                const groupData = [];
 
+                // Loop through each of the 6 columns for this enemy group
                 for (let i = 0; i < 6; i++) {
                     const columnIndex = groupStart + i;
                     groupData[i] = row[columnIndex];
 
-                    if (exludedValue.includes(row[columnIndex])) {
+                    // If value is excluded, replace it with 0 and reuse previous data if necessary
+                    if (excludedValue.includes(row[columnIndex])) {
                         if (i == 0) {
                             useData = false;
                         }
                         groupData[i] = 0;
-                        if (useData) {
-                            if (previousIndex != -1) {
-                                groupData[i] = previousIndexData[i];
-                            }
+                        if (useData && previousIndex !== -1) {
+                            groupData[i] = previousIndexData[i];
                         }
                     } else {
                         if (i == 0) {
@@ -131,10 +130,19 @@ const ExcelReader = () => {
                     }
                 }
 
+                // If the data is valid, add it to the enemylist as an object with name and stats
                 if (useData) {
                     previousIndex = groupStart;
-                    previousIndexData = { ...groupData };
-                    entry.enemylist.push({ [name]: groupData });  // Add the enemy as a separate entry (e.g., "normal", "normal1")
+                    previousIndexData = [...groupData];  // Store previous data for reuse
+
+                    // Create the enemy object with the proper structure
+                    const enemyData = {
+                        enemyName: name,  // Name of the enemy (e.g., "a", "normal")
+                        stats: groupData   // Stats as an array (e.g., [80, 1, 5.4, 10.8, 0.2, "1 - 0 "])
+                    };
+
+                    // Add the enemy data to the enemylist
+                    entry.enemylist.push(enemyData);
                 }
             });
 
@@ -142,12 +150,15 @@ const ExcelReader = () => {
         })
     };
 
+    // Create the JSON blob and trigger download
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'output.json';
     link.click();
 };
+
+
 
 
 
