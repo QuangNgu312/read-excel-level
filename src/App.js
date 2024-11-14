@@ -138,7 +138,8 @@ const ExcelReader = () => {
                     // Create the enemy object with the proper structure
                     const enemyData = {
                         enemyName: name,  // Name of the enemy (e.g., "a", "normal")
-                        stats: groupData   // Stats as an array (e.g., [80, 1, 5.4, 10.8, 0.2, "1 - 0 "])
+                        stats: groupData.slice(0, 5),
+                        spawns: groupData[5]
                     };
 
                     // Add the enemy data to the enemylist
