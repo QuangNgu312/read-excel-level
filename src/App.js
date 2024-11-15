@@ -117,7 +117,7 @@ const ExcelReader = () => {
             }
           }
           entry.perkList.push({
-            [groupIndex]:{...groupData}
+            ...groupData
           });
 
         }
