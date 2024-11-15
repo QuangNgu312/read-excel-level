@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 function App() {
@@ -14,6 +14,10 @@ const ExcelReader = () => {
   const [showModal, setShowModal] = useState(false);
   const [currentGroup, setCurrentGroup] = useState(0);
   const [customName, setCustomName] = useState('');
+
+  const offsetTopRef = useRef();
+  const offsetLeftRef = useRef();
+  const offsetRightRef = useRef();
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -33,9 +37,9 @@ const ExcelReader = () => {
 
   const loadSheetData = (workbook, sheetName) => {
     const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, range: 2 });
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, range: offsetTopRef.current.value * 1 || 0 });
     setSheetData(removeLastTwoColumns(jsonData));
-  };
+  }
 
   const handleSheetSelect = (event) => {
     const selectedSheetName = event.target.value;
@@ -44,120 +48,89 @@ const ExcelReader = () => {
     loadSheetData(workbook, selectedSheetName);
   };
 
-  const removeLastTwoColumns = (data) => data.map(row => row.slice(0, -2));
+  const removeLastTwoColumns = (data) => {
+    return data.map(row => {
+      let dataRow = [...row]; // Clone the row to avoid modifying the original
 
+      // Check and apply offsetLeftRef
+      if (offsetLeftRef.current?.value) {
+        const offsetLeft = parseInt(offsetLeftRef.current.value, 10);
+        dataRow = dataRow.slice(offsetLeft);
+      }
+
+      // Check and apply offsetRightRef
+      if (offsetRightRef.current?.value) {
+        const offsetRight = parseInt(offsetRightRef.current.value, 10);
+        dataRow = dataRow.slice(0, dataRow.length - offsetRight);
+      }
+      return dataRow;
+    });
+  };
+
+  const suffixes = ["(Lifespan)", "(BulletSpeed)", "(Dmg)", "(CoolDown)", "(NumberSpawnBullet)", "(NumberBullet)", "(ATkRange)", "(Size)", "(RadiousExploded)"];
+  const suffixesKey = ["lifespan", "BulletSpeed", "Dmg", "CoolDown", "NumberSpawnBullet", "NumberBullet", "ATkRange", "Size", "RadiousExploded"];
+  const defaultNames = ["Perk Id", "Perk name", "Description", "Note", "Effect"];
   const updateHeaderNames = (headers) => {
     const updatedHeaders = [...headers];
-    const defaultNames = ["wave", "start time", "end time", "total wave", "total enemy"];
     defaultNames.forEach((name, idx) => updatedHeaders[idx] = name);
 
-    const groupNames = columnNames;
-    const suffixes = ["(Quantity)", "(Scale)", "(Min distance)", "(Max distance)", "(Radius)", "(Type spawn)"];
     for (let i = 5; i < updatedHeaders.length; i++) {
-      const groupIndex = Math.floor((i - 5) /6);
-      if (groupNames[groupIndex]) updatedHeaders[i] = "id:" + groupNames[groupIndex] + "-" + suffixes[(i -5) % 6];
+      const groupIndex = Math.floor((i - defaultNames.length) / suffixes.length);
+      let indexSuffixes = (i - defaultNames.length) % suffixes.length;
+      updatedHeaders[i] = "Level:" + (groupIndex + 1) + "\n" + suffixes[indexSuffixes];
     }
 
     return updatedHeaders;
   };
 
-  const handleNameChange = (e) => setCustomName(e.target.value);
-
-  const handleSaveName = () => {
-    const updatedNames = [...columnNames];
-    updatedNames[currentGroup] = customName;
-    setColumnNames(updatedNames);
-    setCustomName('');
-    setCurrentGroup(currentGroup + 1);
-
-    if (currentGroup + 1 >= Math.ceil(sheetData[0].length / 6)) {
-      setShowModal(false);
-    }
-  };
-
-  const openModal = () => {
-    setShowModal(true);
-    setCurrentGroup(0);
-  };
 
   const generateJson = () => {
     // Filter the rows to exclude invalid waves
     let newSheetData = sheetData.filter(item => {
-        const wave = item[0];
-        // Skip rows where the wave value is invalid (null, "-", or "")
-        return wave && wave !== "-" && wave !== "";
+      const wave = item[0];
+      // Skip rows where the wave value is invalid (null, "-", or "")
+      return wave && wave !== "-" && wave !== "";
     });
 
     const jsonData = {
-        waves: newSheetData.map((row) => {
-            const entry = {
-                wave: row[0],
-                'startTime': row[1],
-                'endTime': row[2],
-                'totalWave': row[3],
-                'totalEnemy': row[4],
-                enemylist: []  // Initialize the enemylist
-            };
+      perk: newSheetData.map((row) => {
+        const entry = {
+          "perkId": row[0],
+          'perkName': row[1],
+          'description': row[2],
+          'note': row[3],
+          'effect': row[4],
+          perkList: []
+        };
 
-            let previousIndex = -1;
-            let previousIndexData = [];
+        for(let i = 5;i < row.length;i+=suffixes.length){
+          const groupIndex = Math.floor((i - defaultNames.length) / suffixes.length);
+          const groupStart = defaultNames.length + groupIndex * suffixes.length;
+          let groupData = {};
+          for (let j = 0; j < suffixesKey.length; j++) {
+            const columnIndex = groupStart + j;
 
-            let excludedValue = ["-", ""];
-            let useData = true;
+            groupData[suffixesKey[j]] = row[columnIndex];
 
-            columnNames.forEach((name, groupIndex) => {
-                const groupStart = 5 + groupIndex * 6;
-                const groupData = [];
+            if(isNaN(row[columnIndex])){
+              groupData[suffixesKey[j]] = 0;
+            }
+          }
+          entry.perkList.push({
+            [groupIndex]:{...groupData}
+          });
 
-                // Loop through each of the 6 columns for this enemy group
-                for (let i = 0; i < 6; i++) {
-                    const columnIndex = groupStart + i;
-                    groupData[i] = row[columnIndex];
+        }
 
-                    // If value is excluded, replace it with 0 and reuse previous data if necessary
-                    if (excludedValue.includes(row[columnIndex])) {
-                        if (i == 0) {
-                            useData = false;
-                        }
-                        groupData[i] = 0;
-                        if (useData && previousIndex !== -1) {
-                            groupData[i] = previousIndexData[i];
-                        }
-                    } else {
-                        if (i == 0) {
-                            useData = true;
-                        }
-                    }
-                }
-
-                // If the data is valid, add it to the enemylist as an object with name and stats
-                if (useData) {
-                    previousIndex = groupStart;
-                    previousIndexData = [...groupData];  // Store previous data for reuse
-
-                    // Create the enemy object with the proper structure
-                    const enemyData = {
-                        enemyName: name,  // Name of the enemy (e.g., "a", "normal")
-                        stats: groupData.slice(0, 5),
-                        spawns: groupData[5]
-                    };
-
-                    // Add the enemy data to the enemylist
-                    entry.enemylist.push(enemyData);
-                }
-            });
-
-            return entry;
-        })
+        return entry;
+      })
     };
-
-    // Create the JSON blob and trigger download
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'output.json';
     link.click();
-};
+  };
 
 
 
@@ -166,7 +139,11 @@ const ExcelReader = () => {
   return (
     <div style={styles.container}>
       <input type="file" onChange={handleFileUpload} accept=".xlsx, .xls" />
-      
+
+      <input style={styles.input_offset} ref={offsetTopRef} placeholder='Off Top' type='number' />
+      <input style={styles.input_offset} ref={offsetLeftRef} placeholder='Off Left' type='number' />
+      <input style={styles.input_offset} ref={offsetRightRef} placeholder='Off Right' type='number' />
+
       {sheetNames.length > 0 && (
         <select value={selectedSheet} onChange={handleSheetSelect} style={styles.select}>
           {sheetNames.map((name, index) => (
@@ -174,10 +151,9 @@ const ExcelReader = () => {
           ))}
         </select>
       )}
-      
+
       {sheetData && (
         <>
-          <button onClick={openModal} style={styles.button}>Edit Column Names</button>
           <button onClick={generateJson} style={styles.button}>Generate JSON</button>
           <table style={styles.table}>
             <thead>
@@ -201,22 +177,6 @@ const ExcelReader = () => {
           </table>
         </>
       )}
-
-      {showModal && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <h3>Enter a name for columns {currentGroup * 5 + 5} - {Math.min((currentGroup + 1) * 5, sheetData[0].length)}</h3>
-            <input
-              type="text"
-              value={customName}
-              onChange={handleNameChange}
-              style={styles.input}
-            />
-            <button onClick={handleSaveName} style={styles.button}>Save Name</button>
-            <button onClick={() => setShowModal(false)} style={styles.button}>Close</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -230,11 +190,18 @@ const styles = {
   evenRow: { backgroundColor: '#f2f2f2' },
   oddRow: { backgroundColor: '#ffffff' },
   cell: { padding: '10px', border: '1px solid #ddd', textAlign: 'left' },
-  button: { padding: '10px 20px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '20px', marginRight: '10px' },
+  button: { marginLeft: "20px", padding: '10px 20px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '20px', marginRight: '10px' },
   modal: { position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: 'white', padding: '20px', borderRadius: '4px', width: '300px', textAlign: 'center' },
   input: { width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '4px' },
   headerRow: { backgroundColor: '#4CAF50', color: 'white' },
+  input_offset: {
+    margin: '0 20px',
+    height: '30px',
+    width: '90px',
+    padding: '10px',
+    fontSize: '20px'
+  }
 };
 
 export default App;
