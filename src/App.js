@@ -68,7 +68,7 @@ const ExcelReader = () => {
   };
 
   const suffixes = ["(Lifespan)", "(BulletSpeed)", "(Dmg)", "(CoolDown)", "(NumberSpawnBullet)", "(NumberBullet)", "(ATkRange)", "(Size)", "(RadiousExploded)"];
-  const suffixesKey = ["lifespan", "BulletSpeed", "Dmg", "CoolDown", "NumberSpawnBullet", "NumberBullet", "ATkRange", "Size", "RadiousExploded"];
+  const suffixesKey = ["lifespan", "bulletSpeed", "dmg", "coolDown", "numberSpawnBullet", "numberBullet", "aTkRange", "size", "radiousExploded"];
   const defaultNames = ["Perk Id", "Perk name", "Description", "Note", "Effect"];
   const updateHeaderNames = (headers) => {
     const updatedHeaders = [...headers];
