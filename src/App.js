@@ -67,60 +67,29 @@ const ExcelReader = () => {
     });
   };
 
-  const suffixes = ["(Lifespan)", "(BulletSpeed)", "(Dmg)", "(CoolDown)", "(NumberSpawnBullet)", "(NumberBullet)", "(ATkRange)", "(Size)", "(RadiousExploded)"];
   const suffixesKey = ["lifespan", "bulletSpeed", "dmg", "coolDown", "numberSpawnBullet", "numberBullet", "aTkRange", "size", "radiousExploded"];
-  const defaultNames = ["Perk Id", "Perk name", "Description", "Note", "Effect"];
+  const defaultNames = ["No", "Time", "Max Level", "Blue1", "Blue2", "Yellow", "Red"];
   const updateHeaderNames = (headers) => {
     const updatedHeaders = [...headers];
     defaultNames.forEach((name, idx) => updatedHeaders[idx] = name);
-
-    for (let i = 5; i < updatedHeaders.length; i++) {
-      const groupIndex = Math.floor((i - defaultNames.length) / suffixes.length);
-      let indexSuffixes = (i - defaultNames.length) % suffixes.length;
-      updatedHeaders[i] = "Level:" + (groupIndex + 1) + "\n" + suffixes[indexSuffixes];
-    }
 
     return updatedHeaders;
   };
 
 
   const generateJson = () => {
-    // Filter the rows to exclude invalid waves
-    let newSheetData = sheetData.filter(item => {
-      const wave = item[0];
-      // Skip rows where the wave value is invalid (null, "-", or "")
-      return wave && wave !== "-" && wave !== "";
-    });
 
     const jsonData = {
-      perk: newSheetData.map((row) => {
+      "levels": sheetData.map((row) => {
         const entry = {
-          "perkId": row[0],
-          'perkName': row[1],
-          'description': row[2],
-          'note': row[3],
-          'effect': row[4],
-          perkList: []
+          "no": row[0],
+          'time': row[1],
+          'maxLevel': row[2],
+          'blue1': isNaN(row[3]) ? 0 : row[3],
+          'blue2': isNaN(row[4]) ? 0 : row[4],
+          'yellow': isNaN(row[5]) ? 0 : row[5],
+          'red':isNaN(row[6]) ? 0 : row[6],
         };
-
-        for(let i = 5;i < row.length;i+=suffixes.length){
-          const groupIndex = Math.floor((i - defaultNames.length) / suffixes.length);
-          const groupStart = defaultNames.length + groupIndex * suffixes.length;
-          let groupData = {};
-          for (let j = 0; j < suffixesKey.length; j++) {
-            const columnIndex = groupStart + j;
-
-            groupData[suffixesKey[j]] = row[columnIndex];
-
-            if(isNaN(row[columnIndex])){
-              groupData[suffixesKey[j]] = 0;
-            }
-          }
-          entry.perkList.push({
-            ...groupData
-          });
-
-        }
 
         return entry;
       })
@@ -128,7 +97,7 @@ const ExcelReader = () => {
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'output.json';
+    link.download = 'level.json';
     link.click();
   };
 
